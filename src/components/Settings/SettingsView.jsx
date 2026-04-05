@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useApp } from '../../context/AppContext';
-import { getUserId } from '../../services/supabaseClient';
+import { getUserId, setUserId } from '../../services/supabaseClient';
 import { formatMoney } from '../../utils/formatters';
 
 export default function SettingsView() {
@@ -11,6 +11,15 @@ export default function SettingsView() {
   const [budgetYear, setBudgetYear] = useState(now.getFullYear());
   const [budgetLimit, setBudgetLimit] = useState('');
   const [budgetCategoryId, setBudgetCategoryId] = useState('');
+
+  const [localDeviceId, setLocalDeviceId] = useState(getUserId());
+
+  const handleSaveDeviceId = () => {
+    if (setUserId(localDeviceId)) {
+      setSaved(true);
+      setTimeout(() => setSaved(false), 1500);
+    }
+  };
 
   const [localSettings, setLocalSettings] = useState({
     aiApiKey: state.settings.aiApiKey,
@@ -152,13 +161,24 @@ export default function SettingsView() {
             onBlur={() => handleSettingsBlur('supabaseKey')}
           />
         </label>
+        <label className="form-field">
+          <span>设备 ID（多设备填相同 ID 即可同步）</span>
+          <div style={{ display: 'flex', gap: '8px' }}>
+            <input
+              type="text"
+              value={localDeviceId}
+              onChange={(e) => setLocalDeviceId(e.target.value)}
+              style={{ flex: 1 }}
+            />
+            <button className="btn btn-sm btn-primary" onClick={handleSaveDeviceId}>保存</button>
+          </div>
+        </label>
         <div className="sync-status-row">
-          <span className="settings-hint">设备 ID: {getUserId().slice(0, 8)}...</span>
           <span className={`sync-badge ${state.settings.supabaseUrl ? 'on' : 'off'}`}>
             {!state.settings.supabaseUrl ? '未配置' : syncStatus === 'syncing' ? '同步中...' : syncStatus === 'error' ? '同步失败' : '已连接'}
           </span>
         </div>
-        <p className="settings-hint">配置后数据自动同步到云端，多设备共享。同一设备 ID 的数据互通。</p>
+        <p className="settings-hint">配置 Supabase 后数据自动同步到云端。多设备使用相同的设备 ID 即可共享数据。修改设备 ID 后需刷新页面生效。</p>
       </div>
 
       <div className="section-block">

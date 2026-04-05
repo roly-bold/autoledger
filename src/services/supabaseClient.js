@@ -19,3 +19,9 @@ export function getUserId() {
   }
   return id;
 }
+
+export function setUserId(newId) {
+  if (!newId || !newId.trim()) return false;
+  localStorage.setItem('autoledger-user-id', newId.trim());
+  return true;
+}
