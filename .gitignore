@@ -1,0 +1,14 @@
+node_modules/
+dist/
+.omc/
+.claude/
+.agents/
+.mcp.json
+CLAUDE.md
+
+chanlun-stock/
+chanlun-stock-src.tar.gz
+xiaohongshu_cover.html
+后端报错.png
+后端页面.png
+skills-lock.json
