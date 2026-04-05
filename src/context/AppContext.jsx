@@ -187,7 +187,14 @@ export function AppProvider({ children }) {
     setSyncStatus('syncing');
     skipSync.current = true;
     pullAll(state.settings).then((remote) => {
-      if (!remote) { setSyncStatus('idle'); skipSync.current = false; return; }
+      if (!remote) {
+        pushTransactions(state.transactions, state.settings);
+        pushCategories(state.categories, state.settings);
+        pushBudgets(state.budgets, state.settings);
+        setSyncStatus('idle');
+        skipSync.current = false;
+        return;
+      }
       const merged = {};
       const txMerged = mergeRemoteItems(state.transactions, remote.transactions);
       if (txMerged) merged.transactions = txMerged;
@@ -198,6 +205,12 @@ export function AppProvider({ children }) {
       if (Object.keys(merged).length > 0) {
         dispatch({ type: ActionTypes.MERGE_REMOTE, payload: merged });
       }
+      const finalTx = merged.transactions || state.transactions;
+      const finalCat = merged.categories || state.categories;
+      const finalBud = merged.budgets || state.budgets;
+      pushTransactions(finalTx, state.settings);
+      pushCategories(finalCat, state.settings);
+      pushBudgets(finalBud, state.settings);
       setSyncStatus('idle');
       setTimeout(() => { skipSync.current = false; }, 500);
     }).catch(() => { setSyncStatus('error'); skipSync.current = false; });
