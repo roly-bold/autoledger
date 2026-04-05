@@ -3,7 +3,7 @@ import { useApp } from '../../context/AppContext';
 import { classifyTransaction } from '../../services/aiClassification';
 import CategoryPickerView from './CategoryPickerView';
 
-export default function AddTransactionView() {
+export default function AddTransactionView({ onNavigate }) {
   const { state, dispatch, ActionTypes } = useApp();
   const [amount, setAmount] = useState('');
   const [note, setNote] = useState('');
@@ -64,7 +64,7 @@ export default function AddTransactionView() {
     setCategoryId(null);
     setTags('');
     setSaved(true);
-    setTimeout(() => setSaved(false), 2000);
+    setTimeout(() => { setSaved(false); onNavigate?.('dashboard'); }, 1000);
   };
 
   return (
