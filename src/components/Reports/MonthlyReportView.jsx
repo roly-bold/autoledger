@@ -11,10 +11,7 @@ import {
   detectAnomalies,
 } from '../../services/reportGenerator';
 import { exportReportAsPDF } from '../../services/pdfExporter';
-
-function formatMoney(n) {
-  return n.toLocaleString('zh-CN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-}
+import { formatMoney } from '../../utils/formatters';
 
 export default function MonthlyReportView() {
   const { state } = useApp();

@@ -4,14 +4,10 @@ function getClient(settings) {
   return getSupabase(settings.supabaseUrl, settings.supabaseKey);
 }
 
-function uid() {
-  return getUserId();
-}
-
 export async function pullAll(settings) {
   const sb = getClient(settings);
   if (!sb) return null;
-  const userId = uid();
+  const userId = getUserId();
 
   const [txRes, catRes, budRes, setRes] = await Promise.all([
     sb.from('transactions').select('*').eq('user_id', userId),
@@ -28,77 +24,25 @@ export async function pullAll(settings) {
   };
 }
 
-export async function pushTransactions(transactions, settings) {
+async function pushEntities(table, items, settings) {
   const sb = getClient(settings);
   if (!sb) return;
-  const userId = uid();
-
-  const rows = transactions.map((t) => ({
-    id: t.id,
-    user_id: userId,
-    data: t,
-  }));
-
-  const { error } = await sb.from('transactions').upsert(rows, { onConflict: 'id' });
-  if (error) console.warn('sync transactions error:', error.message);
+  const userId = getUserId();
+  const rows = items.map((item) => ({ id: item.id, user_id: userId, data: item }));
+  const { error } = await sb.from(table).upsert(rows, { onConflict: 'id' });
+  if (error) console.warn(`sync ${table} error:`, error.message);
 }
 
-export async function pushCategories(categories, settings) {
+async function deleteEntity(table, id, settings) {
   const sb = getClient(settings);
   if (!sb) return;
-  const userId = uid();
-
-  const rows = categories.map((c) => ({
-    id: c.id,
-    user_id: userId,
-    data: c,
-  }));
-
-  const { error } = await sb.from('categories').upsert(rows, { onConflict: 'id' });
-  if (error) console.warn('sync categories error:', error.message);
+  await sb.from(table).delete().eq('id', id);
 }
 
-export async function pushBudgets(budgets, settings) {
-  const sb = getClient(settings);
-  if (!sb) return;
-  const userId = uid();
+export const pushTransactions = (items, settings) => pushEntities('transactions', items, settings);
+export const pushCategories = (items, settings) => pushEntities('categories', items, settings);
+export const pushBudgets = (items, settings) => pushEntities('budgets', items, settings);
 
-  const rows = budgets.map((b) => ({
-    id: b.id,
-    user_id: userId,
-    data: b,
-  }));
-
-  const { error } = await sb.from('budgets').upsert(rows, { onConflict: 'id' });
-  if (error) console.warn('sync budgets error:', error.message);
-}
-
-export async function pushSettings(settingsData, settings) {
-  const sb = getClient(settings);
-  if (!sb) return;
-  const userId = uid();
-
-  const { error } = await sb.from('user_settings').upsert({
-    user_id: userId,
-    data: { ...settingsData, supabaseKey: '' },
-  }, { onConflict: 'user_id' });
-  if (error) console.warn('sync settings error:', error.message);
-}
-
-export async function deleteTransaction(id, settings) {
-  const sb = getClient(settings);
-  if (!sb) return;
-  await sb.from('transactions').delete().eq('id', id);
-}
-
-export async function deleteCategory(id, settings) {
-  const sb = getClient(settings);
-  if (!sb) return;
-  await sb.from('categories').delete().eq('id', id);
-}
-
-export async function deleteBudget(id, settings) {
-  const sb = getClient(settings);
-  if (!sb) return;
-  await sb.from('budgets').delete().eq('id', id);
-}
+export const deleteTransaction = (id, settings) => deleteEntity('transactions', id, settings);
+export const deleteCategory = (id, settings) => deleteEntity('categories', id, settings);
+export const deleteBudget = (id, settings) => deleteEntity('budgets', id, settings);

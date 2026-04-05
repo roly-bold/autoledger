@@ -1,10 +1,7 @@
 import React, { useState } from 'react';
 import { useApp } from '../../context/AppContext';
 import { getUserId } from '../../services/supabaseClient';
-
-function formatMoney(n) {
-  return n.toLocaleString('zh-CN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-}
+import { formatMoney } from '../../utils/formatters';
 
 export default function SettingsView() {
   const { state, dispatch, ActionTypes, syncStatus } = useApp();
@@ -15,10 +12,24 @@ export default function SettingsView() {
   const [budgetLimit, setBudgetLimit] = useState('');
   const [budgetCategoryId, setBudgetCategoryId] = useState('');
 
-  const handleSettingsChange = (key, value) => {
-    dispatch({ type: ActionTypes.UPDATE_SETTINGS, payload: { [key]: value } });
-    setSaved(true);
-    setTimeout(() => setSaved(false), 1500);
+  const [localSettings, setLocalSettings] = useState({
+    aiApiKey: state.settings.aiApiKey,
+    aiApiEndpoint: state.settings.aiApiEndpoint,
+    aiModel: state.settings.aiModel,
+    supabaseUrl: state.settings.supabaseUrl,
+    supabaseKey: state.settings.supabaseKey,
+  });
+
+  const handleLocalChange = (key, value) => {
+    setLocalSettings((prev) => ({ ...prev, [key]: value }));
+  };
+
+  const handleSettingsBlur = (key) => {
+    if (localSettings[key] !== state.settings[key]) {
+      dispatch({ type: ActionTypes.UPDATE_SETTINGS, payload: { [key]: localSettings[key] } });
+      setSaved(true);
+      setTimeout(() => setSaved(false), 1500);
+    }
   };
 
   const handleAddBudget = (e) => {
@@ -69,9 +80,11 @@ export default function SettingsView() {
     reader.onload = (evt) => {
       try {
         const data = JSON.parse(evt.target.result);
-        if (data.transactions) {
-          for (const t of data.transactions) {
-            dispatch({ type: ActionTypes.ADD_TRANSACTION, payload: t });
+        if (data.transactions && data.transactions.length > 0) {
+          const existingIds = new Set(state.transactions.map((t) => t.id));
+          const newTx = data.transactions.filter((t) => !existingIds.has(t.id));
+          if (newTx.length > 0) {
+            dispatch({ type: ActionTypes.BATCH_ADD_TRANSACTIONS, payload: newTx });
           }
         }
         setSaved(true);
@@ -92,24 +105,27 @@ export default function SettingsView() {
           <input
             type="password"
             placeholder="sk-..."
-            value={state.settings.aiApiKey}
-            onChange={(e) => handleSettingsChange('aiApiKey', e.target.value)}
+            value={localSettings.aiApiKey}
+            onChange={(e) => handleLocalChange('aiApiKey', e.target.value)}
+            onBlur={() => handleSettingsBlur('aiApiKey')}
           />
         </label>
         <label className="form-field">
           <span>API 地址</span>
           <input
             type="url"
-            value={state.settings.aiApiEndpoint}
-            onChange={(e) => handleSettingsChange('aiApiEndpoint', e.target.value)}
+            value={localSettings.aiApiEndpoint}
+            onChange={(e) => handleLocalChange('aiApiEndpoint', e.target.value)}
+            onBlur={() => handleSettingsBlur('aiApiEndpoint')}
           />
         </label>
         <label className="form-field">
           <span>模型</span>
           <input
             type="text"
-            value={state.settings.aiModel}
-            onChange={(e) => handleSettingsChange('aiModel', e.target.value)}
+            value={localSettings.aiModel}
+            onChange={(e) => handleLocalChange('aiModel', e.target.value)}
+            onBlur={() => handleSettingsBlur('aiModel')}
           />
         </label>
       </div>
@@ -121,8 +137,9 @@ export default function SettingsView() {
           <input
             type="url"
             placeholder="https://xxx.supabase.co"
-            value={state.settings.supabaseUrl}
-            onChange={(e) => handleSettingsChange('supabaseUrl', e.target.value)}
+            value={localSettings.supabaseUrl}
+            onChange={(e) => handleLocalChange('supabaseUrl', e.target.value)}
+            onBlur={() => handleSettingsBlur('supabaseUrl')}
           />
         </label>
         <label className="form-field">
@@ -130,8 +147,9 @@ export default function SettingsView() {
           <input
             type="password"
             placeholder="eyJ..."
-            value={state.settings.supabaseKey}
-            onChange={(e) => handleSettingsChange('supabaseKey', e.target.value)}
+            value={localSettings.supabaseKey}
+            onChange={(e) => handleLocalChange('supabaseKey', e.target.value)}
+            onBlur={() => handleSettingsBlur('supabaseKey')}
           />
         </label>
         <div className="sync-status-row">

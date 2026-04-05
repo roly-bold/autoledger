@@ -3,10 +3,7 @@ import { useApp } from '../../context/AppContext';
 import { parseMultipleTexts } from '../../services/textParsing';
 import { readClipboard, looksLikeTransaction } from '../../services/clipboardMonitor';
 import CategoryPickerView from '../AddTransaction/CategoryPickerView';
-
-function formatMoney(n) {
-  return n.toLocaleString('zh-CN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-}
+import { formatMoney } from '../../utils/formatters';
 
 export default function TextImportView() {
   const { state, dispatch, ActionTypes } = useApp();
@@ -53,9 +50,7 @@ export default function TextImportView() {
   };
 
   const handleImportAll = () => {
-    for (const item of parsed) {
-      dispatch({ type: ActionTypes.ADD_TRANSACTION, payload: item });
-    }
+    dispatch({ type: ActionTypes.BATCH_ADD_TRANSACTIONS, payload: parsed });
     setParsed([]);
     setText('');
   };

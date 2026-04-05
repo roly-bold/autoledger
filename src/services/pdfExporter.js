@@ -1,6 +1,4 @@
-function formatMoney(n) {
-  return n.toLocaleString('zh-CN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-}
+import { formatMoney } from '../utils/formatters';
 
 function buildCategoryRows(breakdown) {
   return breakdown.map((item) =>
@@ -176,5 +174,7 @@ export function exportReportAsPDF({ year, month, summary, breakdown, budgets, an
       win.print();
       URL.revokeObjectURL(url);
     };
+  } else {
+    URL.revokeObjectURL(url);
   }
 }

@@ -1,10 +1,7 @@
 import React, { useState } from 'react';
 import { useApp } from '../../context/AppContext';
 import CategoryPickerView from '../AddTransaction/CategoryPickerView';
-
-function formatMoney(n) {
-  return n.toLocaleString('zh-CN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-}
+import { formatMoney } from '../../utils/formatters';
 
 export default function PendingListView() {
   const { state, dispatch, ActionTypes } = useApp();
@@ -39,9 +36,7 @@ export default function PendingListView() {
   };
 
   const handleConfirmAll = () => {
-    for (const tx of pending) {
-      dispatch({ type: ActionTypes.CONFIRM_TRANSACTION, payload: tx.id });
-    }
+    dispatch({ type: ActionTypes.BATCH_CONFIRM_TRANSACTIONS, payload: pending.map((tx) => tx.id) });
   };
 
   const handleDelete = (id) => {

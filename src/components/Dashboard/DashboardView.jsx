@@ -1,10 +1,7 @@
 import React, { useState } from 'react';
 import { useApp } from '../../context/AppContext';
 import { getMonthTransactions, getMonthSummary, getBudgetComparison } from '../../services/reportGenerator';
-
-function formatMoney(n) {
-  return n.toLocaleString('zh-CN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-}
+import { formatMoney } from '../../utils/formatters';
 
 export default function DashboardView({ onNavigate }) {
   const { state, dispatch, ActionTypes } = useApp();

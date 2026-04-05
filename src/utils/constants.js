@@ -5,17 +5,6 @@ export const STORAGE_KEYS = {
   SETTINGS: 'autoledger-settings',
 };
 
-export const TRANSACTION_TYPES = {
-  INCOME: 'income',
-  EXPENSE: 'expense',
-};
-
-export const TRANSACTION_SOURCES = {
-  MANUAL: 'manual',
-  CLIPBOARD: 'clipboard',
-  IMPORT: 'import',
-};
-
 export const DEFAULT_SETTINGS = {
   aiApiKey: '',
   aiApiEndpoint: 'https://api.openai.com/v1/chat/completions',

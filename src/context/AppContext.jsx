@@ -18,9 +18,11 @@ const AppContext = createContext(null);
 
 const ActionTypes = {
   ADD_TRANSACTION: 'ADD_TRANSACTION',
+  BATCH_ADD_TRANSACTIONS: 'BATCH_ADD_TRANSACTIONS',
   UPDATE_TRANSACTION: 'UPDATE_TRANSACTION',
   DELETE_TRANSACTION: 'DELETE_TRANSACTION',
   CONFIRM_TRANSACTION: 'CONFIRM_TRANSACTION',
+  BATCH_CONFIRM_TRANSACTIONS: 'BATCH_CONFIRM_TRANSACTIONS',
   ADD_CATEGORY: 'ADD_CATEGORY',
   UPDATE_CATEGORY: 'UPDATE_CATEGORY',
   DELETE_CATEGORY: 'DELETE_CATEGORY',
@@ -41,6 +43,15 @@ function appReducer(state, action) {
         ],
       };
 
+    case ActionTypes.BATCH_ADD_TRANSACTIONS:
+      return {
+        ...state,
+        transactions: [
+          ...action.payload.map((t) => ({ id: nanoid(), createdAt: new Date().toISOString(), ...t })),
+          ...state.transactions,
+        ],
+      };
+
     case ActionTypes.UPDATE_TRANSACTION:
       return {
         ...state,
@@ -53,7 +64,6 @@ function appReducer(state, action) {
       return {
         ...state,
         transactions: state.transactions.filter((t) => t.id !== action.payload),
-        _deletedTx: action.payload,
       };
 
     case ActionTypes.CONFIRM_TRANSACTION:
@@ -62,6 +72,15 @@ function appReducer(state, action) {
         transactions: state.transactions.map((t) =>
           t.id === action.payload ? { ...t, isConfirmed: true } : t
         ),
+      };
+
+    case ActionTypes.BATCH_CONFIRM_TRANSACTIONS:
+      return {
+        ...state,
+        transactions: state.transactions.map((t) => {
+          const ids = new Set(action.payload);
+          return ids.has(t.id) ? { ...t, isConfirmed: true } : t;
+        }),
       };
 
     case ActionTypes.ADD_CATEGORY:
@@ -88,7 +107,6 @@ function appReducer(state, action) {
         transactions: state.transactions.map((t) =>
           t.categoryId === action.payload ? { ...t, categoryId: null } : t
         ),
-        _deletedCat: action.payload,
       };
 
     case ActionTypes.SET_BUDGET: {
@@ -110,7 +128,6 @@ function appReducer(state, action) {
       return {
         ...state,
         budgets: state.budgets.filter((b) => b.id !== action.payload),
-        _deletedBud: action.payload,
       };
 
     case ActionTypes.UPDATE_SETTINGS:
@@ -136,11 +153,31 @@ function initState() {
   };
 }
 
+function mergeRemoteItems(local, remote) {
+  if (remote.length === 0) return null;
+  const localIds = new Set(local.map((item) => item.id));
+  const merged = [...local];
+  for (const row of remote) {
+    if (!localIds.has(row.id)) merged.push(row.data);
+  }
+  return merged.length > local.length ? merged : null;
+}
+
 export function AppProvider({ children }) {
   const [state, dispatch] = useReducer(appReducer, null, initState);
   const [syncStatus, setSyncStatus] = React.useState('idle');
   const skipSync = useRef(false);
   const initialPullDone = useRef(false);
+  const deletedTxRef = useRef(null);
+  const deletedCatRef = useRef(null);
+  const deletedBudRef = useRef(null);
+
+  const wrappedDispatch = useCallback((action) => {
+    if (action.type === ActionTypes.DELETE_TRANSACTION) deletedTxRef.current = action.payload;
+    if (action.type === ActionTypes.DELETE_CATEGORY) deletedCatRef.current = action.payload;
+    if (action.type === ActionTypes.DELETE_BUDGET) deletedBudRef.current = action.payload;
+    dispatch(action);
+  }, []);
 
   const syncEnabled = state.settings.supabaseUrl && state.settings.supabaseKey;
 
@@ -152,27 +189,12 @@ export function AppProvider({ children }) {
     pullAll(state.settings).then((remote) => {
       if (!remote) { setSyncStatus('idle'); skipSync.current = false; return; }
       const merged = {};
-      if (remote.transactions.length > 0) {
-        const localIds = new Set(state.transactions.map((t) => t.id));
-        merged.transactions = [...state.transactions];
-        for (const row of remote.transactions) {
-          if (!localIds.has(row.id)) merged.transactions.push(row.data);
-        }
-      }
-      if (remote.categories.length > 0) {
-        const localIds = new Set(state.categories.map((c) => c.id));
-        merged.categories = [...state.categories];
-        for (const row of remote.categories) {
-          if (!localIds.has(row.id)) merged.categories.push(row.data);
-        }
-      }
-      if (remote.budgets.length > 0) {
-        const localIds = new Set(state.budgets.map((b) => b.id));
-        merged.budgets = [...state.budgets];
-        for (const row of remote.budgets) {
-          if (!localIds.has(row.id)) merged.budgets.push(row.data);
-        }
-      }
+      const txMerged = mergeRemoteItems(state.transactions, remote.transactions);
+      if (txMerged) merged.transactions = txMerged;
+      const catMerged = mergeRemoteItems(state.categories, remote.categories);
+      if (catMerged) merged.categories = catMerged;
+      const budMerged = mergeRemoteItems(state.budgets, remote.budgets);
+      if (budMerged) merged.budgets = budMerged;
       if (Object.keys(merged).length > 0) {
         dispatch({ type: ActionTypes.MERGE_REMOTE, payload: merged });
       }
@@ -186,27 +208,36 @@ export function AppProvider({ children }) {
     if (skipSync.current) { skipSync.current = false; return; }
     if (!syncEnabled) return;
     pushTransactions(state.transactions, state.settings);
-    if (state._deletedTx) remoteDeleteTx(state._deletedTx, state.settings);
+    if (deletedTxRef.current) {
+      remoteDeleteTx(deletedTxRef.current, state.settings);
+      deletedTxRef.current = null;
+    }
   }, [state.transactions]);
 
   useEffect(() => {
     saveCategories(state.categories);
     if (!syncEnabled || skipSync.current) return;
     pushCategories(state.categories, state.settings);
-    if (state._deletedCat) remoteDeleteCat(state._deletedCat, state.settings);
+    if (deletedCatRef.current) {
+      remoteDeleteCat(deletedCatRef.current, state.settings);
+      deletedCatRef.current = null;
+    }
   }, [state.categories]);
 
   useEffect(() => {
     saveBudgets(state.budgets);
     if (!syncEnabled || skipSync.current) return;
     pushBudgets(state.budgets, state.settings);
-    if (state._deletedBud) remoteDeleteBud(state._deletedBud, state.settings);
+    if (deletedBudRef.current) {
+      remoteDeleteBud(deletedBudRef.current, state.settings);
+      deletedBudRef.current = null;
+    }
   }, [state.budgets]);
 
   useEffect(() => { saveSettings(state.settings); }, [state.settings]);
 
   return (
-    <AppContext.Provider value={{ state, dispatch, ActionTypes, syncStatus }}>
+    <AppContext.Provider value={{ state, dispatch: wrappedDispatch, ActionTypes, syncStatus }}>
       {children}
     </AppContext.Provider>
   );
